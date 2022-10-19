@@ -333,9 +333,10 @@ askForFullCleaning() {
   # mariadb is based on mysql and it works against mysql folders and libs
   if [[ " mariadb maria " =~ " $1 " ]]; then
     folder="mysql"
+    local formerDB=$oldDatabase
   fi
   if [[ -d "/var/lib/$folder" || -d "/etc/$folder" ]]; then
-    printf "\nIt has been detected a prior ${folder:-$1} install...\n";
+    printf "\nIt has been detected a prior ${formerDB:-$1} install...\n";
     printf "Do you want to do a CLEAN install? [(y)es | (n)o | (q)uit] (n): ";
     local cleanInstall="$(normalizeInput n)"
    
@@ -354,6 +355,9 @@ askForFullCleaning() {
 ##      ##
 ## INIT ##
 ##      ##
+
+# Change to user folder, it is needed in order to write several temporary files
+cd
 printf "Please read the following questions carefully\n"
 
 # UPDATE REPOSITORIES
@@ -374,9 +378,9 @@ fi
 # SETTING DATABASE TYPE
 oldDatabase="$(getOldDB)"
 
-printf "\nWhat database are you going to install? [mysql | mariadb | (q)uit] (mysql): "
+printf "\nWhat database are you going to install? [mysql | mariadb | (q)uit] ($oldDatabase): "
 while true; do
-  database="$(normalizeInput mysql)"
+  database="$(normalizeInput $oldDatabase)"
   if [[ " mysql mariadb " =~ " $database " ]]; then
     break
   elif [[ " q quit " =~ " $database " ]]; then
@@ -605,10 +609,11 @@ pmaConfig="config.inc.php"
 # to create phpmyadmin database and user when databases are different 
 # or want a fresh install of databases or phpmyadmin
 
-if [[ -n "$rootPassword" ]] && ([[ "$oldDatabase" != "$database" ]] || ${cleanInstalls[database]}) || ${cleanInstalls[phpmyadmin]}; then
+if [[ -n "$rootPassword" ]] && ${cleanInstalls[phpmyadmin]}; then
+  # Change to user folder, it is needed in order to write several temporary files
+  cd
   printf "\nINSTALLING phpmyadmin...\n"
   printf "\n\t=> Downloading files...\n"
-  cd
   wget "https://files.phpmyadmin.net/phpMyAdmin/${pmaVersion}/phpMyAdmin-${pmaVersion}-all-languages.zip" > /dev/null 2>&1
   printf "\n\t=> Decompressing files...\n"
   unzip -qo phpMyAdmin-${pmaVersion}-all-languages.zip 
@@ -619,17 +624,6 @@ if [[ -n "$rootPassword" ]] && ([[ "$oldDatabase" != "$database" ]] || ${cleanIn
   sudo chown -R root:root /usr/share/phpmyadmin
   sudo install -d /usr/share/phpmyadmin/tmp  -o www-data -g www-data -m 777 2>/dev/null
 
-   # PMA DATABASE
-  printf "\n\t=> Creating phpmyadmin database in $database...\n"
-  mysql --user="root" --password="$rootPassword" < /usr/share/phpmyadmin/sql/create_tables.sql  > /dev/null 2>&1
-  # CREATE PHPMYADMIN PMA USER, we need root and pma password
-  if [[ -n "$pmaPassword" ]]; then   
-    printf "\n\t=> Creating phpmyadmin pma user...\n"
-    pma="'pma'@'localhost'"
-    mysql --user="root" --password="$rootPassword" -e "CREATE USER $pma IDENTIFIED BY '$pmaPassword';" > /dev/null 2>&1
-    mysql --user="root" --password="$rootPassword" -e "GRANT ALL PRIVILEGES on phpmyadmin.* TO $pma;" > /dev/null 2>&1
-    mysql --user="root" --password="$rootPassword" -e "FLUSH PRIVILEGES;" > /dev/null 2>&1
-  fi
 
   # initial setup of phpmyadmin config file
   # phpmyadmin.conf file in apache
@@ -687,6 +681,21 @@ EOF
   sudo cp -f "$pmaConfig" /usr/share/phpmyadmin/"$pmaConfig" 2>/dev/null
 fi
 
+# only set phpmyadmin database if databases change or are clean installs
+if [[ -n "$rootPassword" ]] && ([[ "$oldDatabase" != "$database" ]] || ${cleanInstalls[database]}); then
+   # PMA DATABASE
+  printf "\n\t=> Creating phpmyadmin database in $database...\n"
+  mysql --user="root" --password="$rootPassword" < /usr/share/phpmyadmin/sql/create_tables.sql  > /dev/null 2>&1
+  # CREATE PHPMYADMIN PMA USER, we need root and pma password
+  if [[ -n "$pmaPassword" ]]; then   
+    printf "\n\t=> Creating phpmyadmin pma user...\n"
+    pma="'pma'@'localhost'"
+    mysql --user="root" --password="$rootPassword" -e "CREATE USER $pma IDENTIFIED BY '$pmaPassword';" > /dev/null 2>&1
+    mysql --user="root" --password="$rootPassword" -e "GRANT ALL PRIVILEGES on phpmyadmin.* TO $pma;" > /dev/null 2>&1
+    mysql --user="root" --password="$rootPassword" -e "FLUSH PRIVILEGES;" > /dev/null 2>&1
+  fi
+fi
+
 # if pma password was set, that's it, you change it o create it from scratch
 # you must update password in database and in the config file
 if [[ -n "$pmaPassword" ]]; then
@@ -707,7 +716,7 @@ printf "\nReleasing used resources...\n"
 if [[ -f "script.sed" ]]; then
   rm $pmaConfig script.sed
 fi
-if [[ -n "$rootPassword" ]] && ([[ "$oldDatabase" != "$database" ]] || ${cleanInstalls[database]}) || ${cleanInstalls[phpmyadmin]}; then
+if [[ -n "$rootPassword" ]] && ${cleanInstalls[phpmyadmin]}; then
   printf "Removing phpmyadmin files...\n"
   rm "phpMyAdmin-${pmaVersion}-all-languages"*
 fi
