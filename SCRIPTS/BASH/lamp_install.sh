@@ -378,9 +378,9 @@ fi
 # SETTING DATABASE TYPE
 oldDatabase="$(getOldDB)"
 
-printf "\nWhat database are you going to install? [mysql | mariadb | (q)uit] ($oldDatabase): "
+printf "\nWhat database are you going to install? [mysql | mariadb | (q)uit] (${oldDatabase:-mysql}): "
 while true; do
-  database="$(normalizeInput $oldDatabase)"
+  database="$(normalizeInput ${oldDatabase:-mysql})"
   if [[ " mysql mariadb " =~ " $database " ]]; then
     break
   elif [[ " q quit " =~ " $database " ]]; then
