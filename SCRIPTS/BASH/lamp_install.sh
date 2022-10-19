@@ -16,16 +16,13 @@
 ### FUNCTIONS ###
 ###           ###
 
-# GENERATE RANDOMS STRINGS AS SECRETS
-# please notice this is not using a PBKDF
-# Use bcrypt, crypt, lyra2, argon2 to store passwords
+# CHECK IF A LIBRARY EXISTS
 # 
 # PARAMETERS
-#   $1 => final length of the base64, displayed characters
-#   $2 => size in bytes [32 bytes - 64 hex]
+#   $1 => package name
 #
 # RETURNS
-#   $secret => a base64 encoded string
+#   true or false
 #
 exist() {
   if [[ -d "/var/lib/$1" || -e "/bin/$1" ]]; then
