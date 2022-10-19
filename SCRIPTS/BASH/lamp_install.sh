@@ -606,10 +606,9 @@ fi
 # phpmyadmin config file
 pmaConfig="config.inc.php" 
 
-# to create phpmyadmin database and user when databases are different 
-# or want a fresh install of databases or phpmyadmin
+# want a fresh install of phpmyadmin of does not exist
 
-if [[ -n "$rootPassword" ]] && ${cleanInstalls[phpmyadmin]}; then
+if [[ -n "$rootPassword" ]] && ([[ ! -d "/etc/phpmyadmin" ]] || ${cleanInstalls[phpmyadmin]}); then
   # Change to user folder, it is needed in order to write several temporary files
   cd
   printf "\nINSTALLING phpmyadmin...\n"
