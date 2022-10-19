@@ -1,0 +1,6 @@
+To perform an installation of LAMPP(Linux, Apache, Mysql, PHP, PHPMyAdmin) servers
+Modules installed [tested on] Ubuntu 22.04
+    Apache 2.4.52
+    MySql 8.0.30 / MariaDB 10.6.7
+    PHP 8.1.2
+    PHPMyAdmin 5.2.0
