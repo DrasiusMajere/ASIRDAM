@@ -311,7 +311,7 @@ doFullCleaning() {
   sudo mv "/etc/${folder}" "/etc/bak${folder}" 2>/dev/null
   # if apache2 is removed we also must ensure php is deleted as well 
   if [[ " apache apache2 " =~ " $folder " ]]; then
-    printf  "y\n" | doCleaning "php"
+    printf  "y\n" | doFullCleaning "php"
   fi
   printf "\neliminando: $folder\n"
 
@@ -608,7 +608,7 @@ pmaConfig="config.inc.php"
 
 # want a fresh install of phpmyadmin of does not exist
 
-if [[ -n "$rootPassword" ]] && ([[ ! -d "/etc/phpmyadmin" ]] || ${cleanInstalls[phpmyadmin]}); then
+if [[ -n "$rootPassword" ]] && ([[ ! -d "/usr/share/phpmyadmin" ]] || ${cleanInstalls[phpmyadmin]}); then
   # Change to user folder, it is needed in order to write several temporary files
   cd
   printf "\nINSTALLING phpmyadmin...\n"
