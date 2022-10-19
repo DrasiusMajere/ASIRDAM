@@ -579,7 +579,7 @@ if [[ "$database" == "mariadb" ]]; then
   else
     sudo mysql -uroot -p"${oldRootPassword}" -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${rootPassword}';" > /dev/null 2>&1
   fi    
-  printf "${rootPassword}\nn\nn\ny\ny\ny\ny\n" | mysql_secure_installation > /dev/null
+  printf "${rootPassword}\nn\nn\ny\ny\ny\ny\n" | mysql_secure_installation > /dev/null 2>&1
 
 elif [[ "$database" == "mysql" ]]; then
   # CONFIGURING MYSQL
@@ -607,7 +607,7 @@ fi
 pmaConfig="config.inc.php" 
 
 # want a fresh install of phpmyadmin of does not exist
-
+# printf "phpmyadmin: ${cleanInstalls[phpmyadmin]}"
 if [[ -n "$rootPassword" ]] && ([[ ! -d "/usr/share/phpmyadmin" ]] || ${cleanInstalls[phpmyadmin]}); then
   # Change to user folder, it is needed in order to write several temporary files
   cd
