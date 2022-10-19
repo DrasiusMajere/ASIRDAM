@@ -127,8 +127,7 @@ normalizeInput() {
 }
 
 # ASK FOR A PASSWORD
-#
-#
+##
 # PARAMETERS
 #   $1 => minimum length [8]
 #   $2 => type of strength (0-15) [1]
@@ -385,7 +384,7 @@ while true; do
   fi
 done 
 
-# map or dictionary to store what services require clean installs
+# MAP or DICTIONARY to store what services require clean installs
 declare -A cleanInstalls
 cleanInstalls[phpmyadmin]=false
 cleanInstalls[database]=false
@@ -412,7 +411,7 @@ if ! ${cleanInstalls[database]} && [[ -d "/var/lib/mysql" ]]; then
     fi
     if [[ -n $oldRootPassword ]]; then
       printf "\nChecking the password, please wait.."
-      # we should check if password is rigth and for that
+      # we should check if password is right and for that
       # one database service must be installed on the system
       sudo systemctl enable --now "mysql" > /dev/null 2>&1
       sudo systemctl enable --now "mariadb" > /dev/null 2>&1  
@@ -449,7 +448,7 @@ fi
 
 
 # PHPMYADMIN CONFIG
-# prior version
+# if any previous version
 
 if [[ -d "/usr/share/phpmyadmin" ]]; then
   printf "\nIt was detected a prior phpmyadmin install." 
@@ -591,24 +590,8 @@ elif [[ "$database" == "mysql" ]]; then
 
   if [[ "$oldDatabase" != "$database" ]] || ${cleanInstalls[database]}; then
     printf "y\n0\nn\ny\ny\ny\ny\n" | mysql_secure_installation --user="root" --password="$rootPassword" > /dev/null 2>&1
-#       mysql_secure_installation --user="root" --password="$rootPassword" << ANSWERS
-# y
-# 0
-# n
-# y
-# y
-# y
-# y
-# ANSWERS
   else
     printf "n\ny\ny\ny\ny\n" | mysql_secure_installation --user="root" --password="$rootPassword" > /dev/null 2>&1
-#     mysql_secure_installation --user="root" --password="$rootPassword" << ANSWERS
-# n
-# y
-# y
-# y
-# y
-# ANSWERS
   fi
 else
   exit 1;
@@ -618,10 +601,10 @@ fi
 # INSTALL PHPMYADMIN
 # phpmyadmin config file
 pmaConfig="config.inc.php" 
-# to create phpmyadmin database and user when databases are different or want a full clean
-# if you want to a fresch install of the phpmyadmin folder
-# initial setup of phpmyadmin config file
-# phpmyadmin.conf file in apache
+
+# to create phpmyadmin database and user when databases are different 
+# or want a fresh install of databases or phpmyadmin
+
 if [[ -n "$rootPassword" ]] && ([[ "$oldDatabase" != "$database" ]] || ${cleanInstalls[database]}) || ${cleanInstalls[phpmyadmin]}; then
   printf "\nINSTALLING phpmyadmin...\n"
   printf "\n\t=> Downloading files...\n"
@@ -648,6 +631,8 @@ if [[ -n "$rootPassword" ]] && ([[ "$oldDatabase" != "$database" ]] || ${cleanIn
     mysql --user="root" --password="$rootPassword" -e "FLUSH PRIVILEGES;" > /dev/null 2>&1
   fi
 
+  # initial setup of phpmyadmin config file
+  # phpmyadmin.conf file in apache
   cat > phpmyadmin.conf << EOF
   Alias /phpmyadmin /usr/share/phpmyadmin
 
@@ -683,10 +668,14 @@ if [[ -n "$rootPassword" ]] && ([[ "$oldDatabase" != "$database" ]] || ${cleanIn
   </Directory>
 EOF
 
+  # we enable this configuration in apache2
   sudo mv -f phpmyadmin.conf /etc/apache2/conf-available/ 2>/dev/null
   sudo a2enconf phpmyadmin.conf > /dev/null 2>&1
 
-  # PMA CONFIG FILE
+  # PHPMYADMIN CONFIG FILE
+  # we need pma user to control the storing of phpmyadmin files
+  # and access to its database
+  # we need blowfish_secret because we are using autentication based on cookies
   printf "\n\t=> Patching $pmaConfig...\n"
   cat > script.sed << EOF
   s/\['blowfish_secret'\] = ''/['blowfish_secret'] = '$(generateSecret)'/
@@ -698,7 +687,7 @@ EOF
   sudo cp -f "$pmaConfig" /usr/share/phpmyadmin/"$pmaConfig" 2>/dev/null
 fi
 
-# if pma password was set, that's it, you change it o create it
+# if pma password was set, that's it, you change it o create it from scratch
 # you must update password in database and in the config file
 if [[ -n "$pmaPassword" ]]; then
   printf "42d\n" >> script.sed
