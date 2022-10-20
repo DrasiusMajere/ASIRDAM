@@ -561,46 +561,38 @@ if ${cleanInstalls[php]}  || ! $(exist php); then
 fi
 
 # INSTALLING DATABASES
-# only if they are different databases or full clean installs
+# only if they are different databases or full clean installs or mysql does not exist
 if [[ "$oldDatabase" != "$database" ]] || ! $(exist mysql) ||  ${cleanInstalls[database]}; then
   printf "\nINSTALLING $database...\n"
   sudo apt-get install -y "$database"-{server,client} > /dev/null
   sudo systemctl restart "$database" > /dev/null
-fi
-
-
-# CONFIGURING DATABASES
-printf "\n\t=> Configuring $database...\n"
-if [[ "$database" == "mariadb" ]]; then
-  # CONFIGURING MARIADB
-  # the first time you install or if you dont remember it
-  if [[ -z "${oldRootPassword}" ]]; then
+  printf "\n\tCONFIGURING $database...\n"
+  if [[ "$database" == "mariadb" ]]; then    
     sudo mysql -uroot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${rootPassword}';" > /dev/null 2>&1
+    printf "${rootPassword}\nn\nn\ny\ny\ny\ny\n" | mysql_secure_installation > /dev/null 2>&1
+  elif [[ "$database" == "mysql" ]]; then
+    sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${rootPassword}';" > /dev/null 2>&1  
+    if [[ "$oldDatabase" != "$database" ]] || ${cleanInstalls[database]}; then
+      printf "y\n0\nn\ny\ny\ny\ny\n" | mysql_secure_installation --user="root" --password="$rootPassword" > /dev/null 2>&1
+    else
+      printf "n\ny\ny\ny\ny\n" | mysql_secure_installation --user="root" --password="$rootPassword" > /dev/null 2>&1
+    fi
   else
+    exit 1;
+  fi
+elif [[ -z "${oldRootPassword}" ]]; then
+  printf "\nUPDATING password root on $database...\n"
+  if [[ "$database" == "mariadb" ]]; then
     sudo mysql -uroot -p"${oldRootPassword}" -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${rootPassword}';" > /dev/null 2>&1
-  fi    
-  printf "${rootPassword}\nn\nn\ny\ny\ny\ny\n" | mysql_secure_installation > /dev/null 2>&1
-
-elif [[ "$database" == "mysql" ]]; then
-  # CONFIGURING MYSQL
-  if [[ -z "${oldRootPassword}" ]]; then
-    sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${rootPassword}';" > /dev/null 2>&1    
-  else
+  elif [[ "$database" == "mysql" ]]; then
     # once you enable validate_password it wont be able to configured again
     # you can set this to a different level or uninstall validate_password plugin
     sudo mysql -p"${oldRootPassword}" -e "SET GLOBAL validate_password.policy=LOW;" > /dev/null 2>&1
-    sudo mysql -p"${oldRootPassword}" -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${rootPassword}';" > /dev/null 2>&1        
-  fi 
-
-  if [[ "$oldDatabase" != "$database" ]] || ${cleanInstalls[database]}; then
-    printf "y\n0\nn\ny\ny\ny\ny\n" | mysql_secure_installation --user="root" --password="$rootPassword" > /dev/null 2>&1
-  else
-    printf "n\ny\ny\ny\ny\n" | mysql_secure_installation --user="root" --password="$rootPassword" > /dev/null 2>&1
+    sudo mysql -p"${oldRootPassword}" -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${rootPassword}';" > /dev/null 2>&1              
   fi
-else
-  exit 1;
 fi
 
+ 
 
 # INSTALL PHPMYADMIN
 # phpmyadmin config file
