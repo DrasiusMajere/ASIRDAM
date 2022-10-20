@@ -600,7 +600,7 @@ pmaConfig="config.inc.php"
 
 # want a fresh install of phpmyadmin of does not exist
 # printf "phpmyadmin: ${cleanInstalls[phpmyadmin]}"
-if [[ -n "$rootPassword" ]] && ([[ ! -d "/usr/share/phpmyadmin" ]] || ${cleanInstalls[phpmyadmin]}); then
+if [[ -n "$pmaVersion" ]] && ([[ ! -d "/usr/share/phpmyadmin" ]] || ${cleanInstalls[phpmyadmin]}); then
   # Change to user folder, it is needed in order to write several temporary files
   cd
   printf "\nINSTALLING phpmyadmin...\n"
@@ -615,8 +615,23 @@ if [[ -n "$rootPassword" ]] && ([[ ! -d "/usr/share/phpmyadmin" ]] || ${cleanIns
   sudo chown -R root:root /usr/share/phpmyadmin
   sudo install -d /usr/share/phpmyadmin/tmp  -o www-data -g www-data -m 777 2>/dev/null
 
+  # PHPMYADMIN CONFIG FILE
+  # we need pma user to control the storing of phpmyadmin files
+  # and access to its database
+  # we need blowfish_secret because we are using autentication based on cookies
+  printf "\n\t=> Patching $pmaConfig...\n"
+  cat > script.sed << EOF
+  s/\['blowfish_secret'\] = ''/['blowfish_secret'] = '$(generateSecret)'/
+  s/\/\/ \$cfg\['Servers'\]\[\$i\]/\$cfg\['Servers'\]\[\$i\]/g
+  s/\$cfg\['Servers'\]\[\$i\]\['controlhost'\] = '';/\$cfg\['Servers'\]\[\$i\]\['controlhost'\] = 'localhost';/
+  \$a \$cfg\['TempDir'\] = '/usr/share/phpmyadmin/tmp';
+EOF
+  sudo sed -f script.sed /usr/share/phpmyadmin/config.sample.inc.php > "$pmaConfig"
+  sudo cp -f "$pmaConfig" /usr/share/phpmyadmin/"$pmaConfig" 2>/dev/null
+fi
 
-  # initial setup of phpmyadmin config file
+if [[  ! -f "/etc/apache2/conf-available/phpmyadmin.conf"  ]]; then
+# initial setup of phpmyadmin config file
   # phpmyadmin.conf file in apache
   cat > phpmyadmin.conf << EOF
   Alias /phpmyadmin /usr/share/phpmyadmin
@@ -656,20 +671,6 @@ EOF
   # we enable this configuration in apache2
   sudo mv -f phpmyadmin.conf /etc/apache2/conf-available/ 2>/dev/null
   sudo a2enconf phpmyadmin.conf > /dev/null 2>&1
-
-  # PHPMYADMIN CONFIG FILE
-  # we need pma user to control the storing of phpmyadmin files
-  # and access to its database
-  # we need blowfish_secret because we are using autentication based on cookies
-  printf "\n\t=> Patching $pmaConfig...\n"
-  cat > script.sed << EOF
-  s/\['blowfish_secret'\] = ''/['blowfish_secret'] = '$(generateSecret)'/
-  s/\/\/ \$cfg\['Servers'\]\[\$i\]/\$cfg\['Servers'\]\[\$i\]/g
-  s/\$cfg\['Servers'\]\[\$i\]\['controlhost'\] = '';/\$cfg\['Servers'\]\[\$i\]\['controlhost'\] = 'localhost';/
-  \$a \$cfg\['TempDir'\] = '/usr/share/phpmyadmin/tmp';
-EOF
-  sudo sed -f script.sed /usr/share/phpmyadmin/config.sample.inc.php > "$pmaConfig"
-  sudo cp -f "$pmaConfig" /usr/share/phpmyadmin/"$pmaConfig" 2>/dev/null
 fi
 
 # only set phpmyadmin database if databases change or are clean installs
